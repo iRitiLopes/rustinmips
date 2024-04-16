@@ -1,8 +1,8 @@
 use crate::CPU;
 
 pub mod i_instructions;
-pub mod r_instructions;
 pub mod j_instructions;
+pub mod r_instructions;
 
 pub trait Instruction {
     fn decode(&self) -> String;

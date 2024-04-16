@@ -3,7 +3,6 @@ use crate::CPU;
 use crate::instructions::Executable;
 use crate::instructions::Instruction;
 
-
 #[derive(Clone)]
 struct ITypeInstruction {
     opcode: u8,
@@ -13,8 +12,6 @@ struct ITypeInstruction {
     imm: i16,
     funct: IFunction,
 }
-
-
 
 impl ITypeInstruction {
     fn new(instruction: u32) -> ITypeInstruction {
@@ -28,12 +25,7 @@ impl ITypeInstruction {
         }
     }
 
-    fn build(
-        opcode: u8,
-        rs: u8,
-        rt: u8,
-        imm: i16,
-    ) -> ITypeInstruction {
+    fn build(opcode: u8, rs: u8, rt: u8, imm: i16) -> ITypeInstruction {
         ITypeInstruction {
             opcode,
             name: String::from("I-Type"),
@@ -54,7 +46,6 @@ impl Instruction for ITypeInstruction {
         self.funct.execute(self.clone(), cpu);
     }
 }
-
 
 #[derive(Clone)]
 struct IFunction {
@@ -83,7 +74,7 @@ impl IFunction {
                 0b001010 => String::from("SLTI"),
                 0b101011 => String::from("SW"),
                 _ => String::from("UNKNOWN"),
-            }
+            },
         }
     }
 
@@ -95,7 +86,6 @@ impl IFunction {
 impl Executable<ITypeInstruction> for IFunction {
     fn execute(&self, r_instruction: ITypeInstruction, cpu: &mut crate::CPU) {
         match self.funct {
-
             // ADDI
             0b001000 => {
                 let rs = cpu.registers[r_instruction.rs as usize].read();
@@ -173,9 +163,8 @@ impl Executable<ITypeInstruction> for IFunction {
     }
 }
 
-
 #[cfg(test)]
-mod tests { 
+mod tests {
     use crate::instructions::Instruction;
 
     #[test]

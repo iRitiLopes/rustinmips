@@ -3,7 +3,6 @@ use crate::CPU;
 use crate::instructions::Executable;
 use crate::instructions::Instruction;
 
-
 #[derive(Clone)]
 pub struct RTypeInstruction {
     opcode: u8,
@@ -31,7 +30,6 @@ impl Instruction for RTypeInstruction {
     fn execute(&self, cpu: &mut CPU) {
         self.funct.execute(self.clone(), cpu);
     }
-    
 }
 
 impl RTypeInstruction {
@@ -93,8 +91,6 @@ impl RFunction {
     }
 }
 
-
-
 impl Executable<RTypeInstruction> for RFunction {
     fn execute(&self, r_instruction: RTypeInstruction, cpu: &mut CPU) {
         match self.funct {
@@ -110,79 +106,74 @@ impl Executable<RTypeInstruction> for RFunction {
                 let rs = cpu.registers[r_instruction.rs as usize].read();
                 let rt = cpu.registers[r_instruction.rt as usize].read();
                 cpu.registers[r_instruction.rd as usize].write(rs.wrapping_add(rt));
-            
-            },
+            }
 
             // Subtract
             0x22 => {
                 let rs = cpu.registers[r_instruction.rs as usize].read();
                 let rt = cpu.registers[r_instruction.rt as usize].read();
                 cpu.registers[r_instruction.rd as usize].write(rs.wrapping_sub(rt));
-            
-            },
+            }
 
             // And
             0x24 => {
                 let rs = cpu.registers[r_instruction.rs as usize].read();
                 let rt = cpu.registers[r_instruction.rt as usize].read();
                 cpu.registers[r_instruction.rd as usize].write(rs & rt);
-            
-            },
+            }
 
             // Or
             0x25 => {
                 let rs = cpu.registers[r_instruction.rs as usize].read();
                 let rt = cpu.registers[r_instruction.rt as usize].read();
                 cpu.registers[r_instruction.rd as usize].write(rs | rt);
-            
-            
-            },
+            }
 
             // Xor
             0x26 => {
                 let rs = cpu.registers[r_instruction.rs as usize].read();
                 let rt = cpu.registers[r_instruction.rt as usize].read();
                 cpu.registers[r_instruction.rd as usize].write(rs ^ rt);
-            },
+            }
 
             // Nor
             0x27 => {
                 let rs = cpu.registers[r_instruction.rs as usize].read();
                 let rt = cpu.registers[r_instruction.rt as usize].read();
                 cpu.registers[r_instruction.rd as usize].write(!(rs | rt));
-            
-            },
+            }
 
             // Set Less Than
             0x2A => {
                 let rs = cpu.registers[r_instruction.rs as usize].read();
                 let rt = cpu.registers[r_instruction.rt as usize].read();
                 cpu.registers[r_instruction.rd as usize].write(if rs < rt { 1 } else { 0 });
-            },
+            }
 
             // Shift Left Logical
             0x00 => {
                 let rt = cpu.registers[r_instruction.rt as usize].read();
                 cpu.registers[r_instruction.rd as usize].write(rt << r_instruction.shamt);
-            },
+            }
 
             // Shift Right Logical
             0x02 => {
                 let rt = cpu.registers[r_instruction.rt as usize].read();
                 cpu.registers[r_instruction.rd as usize].write(rt >> r_instruction.shamt);
-            },
+            }
 
             // Shift Right Arithmetic
             0x03 => {
                 let rt = cpu.registers[r_instruction.rt as usize].read();
-                cpu.registers[r_instruction.rd as usize].write((rt as i32 >> r_instruction.shamt as i32) as u32);
-            },
+                cpu.registers[r_instruction.rd as usize]
+                    .write((rt as i32 >> r_instruction.shamt as i32) as u32);
+            }
 
             // Jump Register
             0x08 => {
                 let rs = cpu.registers[r_instruction.rs as usize].read();
                 cpu.pc = rs;
-            },
+            }
             _ => println!("unknown"),
         }
     }
@@ -251,7 +242,10 @@ mod tests {
         cpu.registers[instruction.rs as usize].write(0b00000);
         cpu.registers[instruction.rt as usize].write(0b00001);
         instruction.execute(&mut cpu);
-        assert_eq!(cpu.registers[instruction.rd as usize].read(), 0b11111111111111111111111111111110);
+        assert_eq!(
+            cpu.registers[instruction.rd as usize].read(),
+            0b11111111111111111111111111111110
+        );
     }
 
     #[test]
@@ -299,7 +293,10 @@ mod tests {
         let value: u32 = 0b1111_1111_1111_1111_1111_1111_1111_0110; // -10
         cpu.registers[instruction.rt as usize].write(value as u32);
         instruction.execute(&mut cpu);
-        assert_eq!(cpu.registers[instruction.rd as usize].read(), 0b1111_1111_1111_1111_1111_1111_1111_1101);
+        assert_eq!(
+            cpu.registers[instruction.rd as usize].read(),
+            0b1111_1111_1111_1111_1111_1111_1111_1101
+        );
     }
 
     #[test]

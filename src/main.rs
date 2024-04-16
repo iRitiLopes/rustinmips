@@ -6,12 +6,9 @@ struct Register {
     value: u32,
 }
 
-
 impl Register {
     fn new() -> Register {
-        Register {
-            value: 0,
-        }
+        Register { value: 0 }
     }
 
     fn read(&self) -> u32 {
@@ -46,7 +43,6 @@ impl Memory {
         self.data[address as usize] = value;
     }
 }
-
 
 pub struct CPU {
     registers: Vec<Register>,
