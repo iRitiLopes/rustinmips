@@ -12,20 +12,23 @@ pub struct JTypeInstruction {
 
 impl JTypeInstruction {
     pub fn new(instruction: u32) -> JTypeInstruction {
+        let opcode = (instruction >> 26) as u8;
+        let function = JFunction::new(opcode);
         JTypeInstruction {
-            opcode: (instruction >> 26) as u8,
-            name: JFunction::new((instruction >> 26) as u8).name.clone(),
+            opcode: opcode,
+            name: function.name.clone(),
             address: instruction & 0x3FFFFFF,
-            funct: JFunction::new((instruction >> 26) as u8)
+            funct: function
         }
     }
 
     fn build(opcode: u8, address: u32) -> JTypeInstruction {
+        let function = JFunction::new(opcode);
         JTypeInstruction {
             opcode,
-            name: JFunction::new(opcode).name.clone(),
+            name: function.name.clone(),
             address,
-            funct: JFunction::new(opcode)
+            funct: function
         }
     }
 }

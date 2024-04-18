@@ -174,6 +174,7 @@ impl Executable<RTypeInstruction> for RFunction {
                 cpu.pc = rs;
             }
 
+            // Syscall
             0x0c => {
                 let v0 = cpu.registers[2].read();
                 let a0 = cpu.registers[4].read();
@@ -184,23 +185,8 @@ impl Executable<RTypeInstruction> for RFunction {
                 }
 
                 if v0 == 4 {
-                    let mut address = a0;
-                    loop {
-                        let value = cpu.memory.read(address);
-                        let char1 = (value & 0xFF) as u8 as char;
-                        let char2 = ((value >> 8) & 0xFF) as u8 as char;
-                        let char3 = ((value >> 16) & 0xFF) as u8 as char;
-                        let char4 = ((value >> 24) & 0xFF) as u8 as char;
-
-                        let char_chain = format!("{}{}{}{}", char1, char2, char3, char4);
-                        print!("{}", char_chain);
-
-                        if char1 == '\0' || char2 == '\0' || char3 == '\0' || char4 == '\0'{
-                            break;
-                        }
-
-                        address += 4;
-                    }
+                    let text = get_text(cpu, a0);
+                    println!("{}", text);
                 }
 
                 if v0 == 10 {
@@ -209,12 +195,36 @@ impl Executable<RTypeInstruction> for RFunction {
             }
             _ => println!("unknown"),
         }
+
+        fn get_text(cpu: &CPU, address: u32) -> String {
+            let mut address = address;
+            let mut text = String::new();
+            loop {
+                let value = cpu.memory.read(address);
+                let char1 = (value & 0xFF) as u8 as char;
+                let char2 = ((value >> 8) & 0xFF) as u8 as char;
+                let char3 = ((value >> 16) & 0xFF) as u8 as char;
+                let char4 = ((value >> 24) & 0xFF) as u8 as char;
+
+                let char_chain = format!("{}{}{}{}", char1, char2, char3, char4);
+                text.push_str(&char_chain);
+
+                if char1 == '\0' || char2 == '\0' || char3 == '\0' || char4 == '\0' {
+                    break;
+                }
+
+                address += 4;
+            }
+
+            text
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::instructions::Instruction;
+    use crate::instructions::Executable;
 
     #[test]
     fn test_add() {
@@ -339,5 +349,29 @@ mod tests {
         cpu.registers[instruction.rs as usize].write(0x100);
         instruction.execute(&mut cpu);
         assert_eq!(cpu.pc, 0x100);
+    }
+
+    #[test]
+    fn test_syscall_v0_is_1(){
+        let mut cpu = super::CPU::new();
+        let instruction = super::RTypeInstruction::new(0x0c);
+        let v0 = 2;
+        let a0 = 4;
+        cpu.registers[v0].write(1);
+        cpu.registers[a0].write(10);
+        instruction.execute(&mut cpu);
+    }
+
+    #[test]
+    fn test_syscall_v0_is_4(){
+        let mut cpu = super::CPU::new();
+        let instruction = super::RTypeInstruction::new(0x0c);
+        let v0 = 2;
+        let a0 = 4;
+        cpu.registers[v0].write(4);
+        cpu.registers[a0].write(32);
+        instruction.execute(&mut cpu);
+
+        assert_eq!(instruction.get_text(&cpu, 32), "a");
     }
 }
