@@ -4,7 +4,7 @@ use crate::instructions::Executable;
 use crate::instructions::Instruction;
 
 #[derive(Clone)]
-struct ITypeInstruction {
+pub struct ITypeInstruction {
     opcode: u8,
     name: String,
     rs: u8,
@@ -14,10 +14,10 @@ struct ITypeInstruction {
 }
 
 impl ITypeInstruction {
-    fn new(instruction: u32) -> ITypeInstruction {
+    pub fn new(instruction: u32) -> ITypeInstruction {
         ITypeInstruction {
             opcode: (instruction >> 26) as u8,
-            name: String::from("I-Type"),
+            name: IFunction::new((instruction >> 26) as u8).name.clone(),
             rs: ((instruction >> 21) & 0b11111) as u8,
             rt: ((instruction >> 16) & 0b11111) as u8,
             imm: (instruction & 0xFFFF) as i16,
@@ -28,7 +28,7 @@ impl ITypeInstruction {
     fn build(opcode: u8, rs: u8, rt: u8, imm: i16) -> ITypeInstruction {
         ITypeInstruction {
             opcode,
-            name: String::from("I-Type"),
+            name: IFunction::new(opcode).name.clone(),
             rs,
             rt,
             imm,
@@ -158,7 +158,13 @@ impl Executable<ITypeInstruction> for IFunction {
                 let value = cpu.memory.read_byte(address);
                 cpu.registers[r_instruction.rt as usize].write(value as u32);
             }
-            _ => panic!("Unknown IType instruction"),
+
+            // LUI
+            0b001111 => {
+                let imm = r_instruction.imm as u32;
+                cpu.registers[r_instruction.rt as usize].write(imm << 16);
+            }
+            _ => panic!("Unknown IType instruction, {}", self.funct),
         }
     }
 }
@@ -298,7 +304,7 @@ mod tests {
 
         let value: u32 = "d".as_bytes()[0] as u32;
         cpu.registers[instruction.rs as usize].write(0);
-        cpu.memory.write(2, value as u8);
+        cpu.memory.write(2, value as u32);
         instruction.execute(&mut cpu);
         assert_eq!(cpu.registers[instruction.rt as usize].read(), value);
     }

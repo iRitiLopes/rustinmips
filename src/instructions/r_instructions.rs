@@ -17,13 +17,11 @@ pub struct RTypeInstruction {
 impl Instruction for RTypeInstruction {
     fn decode(&self) -> String {
         format!(
-            "opcode: {}, name: {} rd: {}, rs: {}, rt: {}, funct: {}",
-            self.opcode,
+            "{} {} {} {}",
             self.name,
             self.rd,
             self.rs,
             self.rt,
-            self.funct.decode()
         )
     }
 
@@ -36,7 +34,7 @@ impl RTypeInstruction {
     pub fn new(instruction: u32) -> RTypeInstruction {
         RTypeInstruction {
             opcode: (instruction >> 26) as u8,
-            name: String::from("R-Type"),
+            name: RFunction::new((instruction & 0b111111) as u8).name.clone(),
             rs: ((instruction >> 21) & 0b11111) as u8,
             rt: ((instruction >> 16) & 0b11111) as u8,
             rd: ((instruction >> 11) & 0b11111) as u8,
@@ -48,7 +46,7 @@ impl RTypeInstruction {
     pub fn build(opcode: u8, rd: u8, rs: u8, rt: u8, shamt: u8, funct: u8) -> RTypeInstruction {
         RTypeInstruction {
             opcode: opcode,
-            name: String::from("R-Type"),
+            name: RFunction::new(funct).name.clone(),
             rd: rd,
             rs: rs,
             rt: rt,
@@ -69,19 +67,20 @@ impl RFunction {
         RFunction {
             funct: funct,
             name: match funct {
-                0x20 => String::from("add"),
-                0x21 => String::from("addu"),
-                0x22 => String::from("sub"),
-                0x24 => String::from("and"),
-                0x25 => String::from("or"),
-                0x26 => String::from("xor"),
-                0x27 => String::from("nor"),
-                0x2A => String::from("slt"),
-                0x00 => String::from("sll"),
-                0x02 => String::from("srl"),
-                0x03 => String::from("sra"),
-                0x08 => String::from("jr"),
-                _ => String::from("unknown"),
+                0x20 => String::from("ADD"),
+                0x21 => String::from("ADDU"),
+                0x22 => String::from("SUB"),
+                0x24 => String::from("AND"),
+                0x25 => String::from("OR"),
+                0x26 => String::from("XOR"),
+                0x27 => String::from("NOR"),
+                0x2A => String::from("SLT"),
+                0x00 => String::from("SLL"),
+                0x02 => String::from("SRL"),
+                0x03 => String::from("SRA"),
+                0x08 => String::from("JR"),
+                0x0c => String::from("SYSCALL"),
+                _ => String::from(format!("unknown {} ||||", funct)),
             },
         }
     }
@@ -173,6 +172,40 @@ impl Executable<RTypeInstruction> for RFunction {
             0x08 => {
                 let rs = cpu.registers[r_instruction.rs as usize].read();
                 cpu.pc = rs;
+            }
+
+            0x0c => {
+                let v0 = cpu.registers[2].read();
+                let a0 = cpu.registers[4].read();
+
+
+                if v0 == 1 {
+                    println!("{}", a0 as u32);
+                }
+
+                if v0 == 4 {
+                    let mut address = a0;
+                    loop {
+                        let value = cpu.memory.read(address);
+                        let char1 = (value & 0xFF) as u8 as char;
+                        let char2 = ((value >> 8) & 0xFF) as u8 as char;
+                        let char3 = ((value >> 16) & 0xFF) as u8 as char;
+                        let char4 = ((value >> 24) & 0xFF) as u8 as char;
+
+                        let char_chain = format!("{}{}{}{}", char1, char2, char3, char4);
+                        print!("{}", char_chain);
+
+                        if char1 == '\0' || char2 == '\0' || char3 == '\0' || char4 == '\0'{
+                            break;
+                        }
+
+                        address += 4;
+                    }
+                }
+
+                if v0 == 10 {
+                    std::process::exit(0);
+                }
             }
             _ => println!("unknown"),
         }
