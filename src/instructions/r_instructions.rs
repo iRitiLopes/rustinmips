@@ -16,13 +16,7 @@ pub struct RTypeInstruction {
 
 impl Instruction for RTypeInstruction {
     fn decode(&self) -> String {
-        format!(
-            "{} {} {} {}",
-            self.name,
-            self.rd,
-            self.rs,
-            self.rt,
-        )
+        format!("{} {} {} {}", self.name, self.rd, self.rs, self.rt,)
     }
 
     fn execute(&self, cpu: &mut CPU) {
@@ -179,13 +173,12 @@ impl Executable<RTypeInstruction> for RFunction {
                 let v0 = cpu.registers[2].read();
                 let a0 = cpu.registers[4].read();
 
-
                 if v0 == 1 {
                     println!("{}", a0 as u32);
                 }
 
                 if v0 == 4 {
-                    let text = get_text(cpu, a0);
+                    let text = utils::get_text(cpu, a0);
                     println!("{}", text);
                 }
 
@@ -195,36 +188,41 @@ impl Executable<RTypeInstruction> for RFunction {
             }
             _ => println!("unknown"),
         }
+    }
+}
 
-        fn get_text(cpu: &CPU, address: u32) -> String {
-            let mut address = address;
-            let mut text = String::new();
-            loop {
-                let value = cpu.memory.read(address);
-                let char1 = (value & 0xFF) as u8 as char;
-                let char2 = ((value >> 8) & 0xFF) as u8 as char;
-                let char3 = ((value >> 16) & 0xFF) as u8 as char;
-                let char4 = ((value >> 24) & 0xFF) as u8 as char;
+mod utils {
+    use crate::CPU;
 
-                let char_chain = format!("{}{}{}{}", char1, char2, char3, char4);
-                text.push_str(&char_chain);
+    pub fn get_text(cpu: &CPU, address: u32) -> String {
+        let mut address = address;
+        let mut text = String::new();
+        loop {
+            let value = cpu.memory.read(address);
+            let char1 = (value & 0xFF) as u8 as char;
+            let char2 = ((value >> 8) & 0xFF) as u8 as char;
+            let char3 = ((value >> 16) & 0xFF) as u8 as char;
+            let char4 = ((value >> 24) & 0xFF) as u8 as char;
 
-                if char1 == '\0' || char2 == '\0' || char3 == '\0' || char4 == '\0' {
-                    break;
-                }
+            let char_chain = format!("{}{}{}{}", char1, char2, char3, char4);
+            text.push_str(&char_chain);
 
-                address += 4;
+            if char1 == '\0' || char2 == '\0' || char3 == '\0' || char4 == '\0' {
+                break;
             }
 
-            text
+            address += 4;
         }
+
+        text.replace('\0', "")
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::instructions::Instruction;
+    use crate::instructions::r_instructions::utils;
     use crate::instructions::Executable;
+    use crate::instructions::Instruction;
 
     #[test]
     fn test_add() {
@@ -352,7 +350,7 @@ mod tests {
     }
 
     #[test]
-    fn test_syscall_v0_is_1(){
+    fn test_syscall_v0_is_1() {
         let mut cpu = super::CPU::new();
         let instruction = super::RTypeInstruction::new(0x0c);
         let v0 = 2;
@@ -363,15 +361,30 @@ mod tests {
     }
 
     #[test]
-    fn test_syscall_v0_is_4(){
+    fn test_syscall_v0_is_4() {
         let mut cpu = super::CPU::new();
         let instruction = super::RTypeInstruction::new(0x0c);
         let v0 = 2;
         let a0 = 4;
+
+        let data_address = 0x00400000;
         cpu.registers[v0].write(4);
-        cpu.registers[a0].write(32);
+        cpu.registers[a0].write(data_address);
+
+        let text = "Hello\0\0\0\0".as_bytes();
+
+        let mut word: u32 = 0;
+        let mut store_address = 0x00400000;
+        for (i, &byte) in text.iter().enumerate() {
+            word = word | (byte as u32) << (i % 4) * 8;
+            if (i + 1) % 4 == 0 {
+                cpu.memory.write(store_address, word);
+                store_address += 4;
+                word = 0;
+            }
+        }
         instruction.execute(&mut cpu);
 
-        assert_eq!(instruction.get_text(&cpu, 32), "a");
+        assert_eq!(utils::get_text(&cpu, data_address), "Hello");
     }
 }
