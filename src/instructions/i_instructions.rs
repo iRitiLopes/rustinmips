@@ -3,6 +3,8 @@ use crate::CPU;
 use crate::instructions::Executable;
 use crate::instructions::Instruction;
 
+use super::j_instructions::JTypeInstruction;
+
 #[derive(Clone)]
 pub struct ITypeInstruction {
     opcode: u8,
@@ -39,7 +41,7 @@ impl ITypeInstruction {
 
 impl Instruction for ITypeInstruction {
     fn decode(&self) -> String {
-        format!("{} {}, {}, {}", self.name, self.rs, self.rt, self.imm)
+        format!("{} rs {}, rt {}, imm {}", self.name, self.rs, self.rt, self.imm)
     }
 
     fn execute(&self, cpu: &mut crate::CPU) {
@@ -84,85 +86,89 @@ impl IFunction {
 }
 
 impl Executable<ITypeInstruction> for IFunction {
-    fn execute(&self, r_instruction: ITypeInstruction, cpu: &mut crate::CPU) {
+    fn execute(&self, instruction: ITypeInstruction, cpu: &mut crate::CPU) {
         match self.funct {
             // ADDI
             0b001000 => {
-                let rs = cpu.registers[r_instruction.rs as usize].read();
-                let imm = r_instruction.imm as u32;
-                cpu.registers[r_instruction.rt as usize].write(rs.wrapping_add(imm));
+                let rs = cpu.registers[instruction.rs as usize].read();
+                let imm = instruction.imm as u32;
+                cpu.write_register(instruction.rt as usize,rs.wrapping_add(imm));
             }
 
             // ADDIU
             0b001001 => {
-                let rs = cpu.registers[r_instruction.rs as usize].read();
-                let imm = r_instruction.imm as u32;
-                cpu.registers[r_instruction.rt as usize].write(rs.wrapping_add(imm));
+                let rs = cpu.registers[instruction.rs as usize].read();
+                let imm = instruction.imm as u32;
+                cpu.write_register(instruction.rt as usize,rs.wrapping_add(imm));
             }
 
             // ANDI
             0b001100 => {
-                let rs = cpu.registers[r_instruction.rs as usize].read();
-                let imm = r_instruction.imm as u32;
-                cpu.registers[r_instruction.rt as usize].write(rs & imm);
+                let rs = cpu.registers[instruction.rs as usize].read();
+                let imm = instruction.imm as u32;
+                cpu.write_register(instruction.rt as usize,rs & imm);
             }
 
             // ORI
             0b001101 => {
-                let rs = cpu.registers[r_instruction.rs as usize].read();
-                let imm = r_instruction.imm as u32;
-                cpu.registers[r_instruction.rt as usize].write(rs | imm);
+                let rs = cpu.registers[instruction.rs as usize].read();
+                let imm = instruction.imm as u32;
+                cpu.write_register(instruction.rt as usize,rs | imm);
             }
 
             // BEQ
             0b000100 => {
-                let rs = cpu.registers[r_instruction.rs as usize].read();
-                let rt = cpu.registers[r_instruction.rt as usize].read();
+                let rs = cpu.registers[instruction.rs as usize].read();
+                let rt = cpu.registers[instruction.rt as usize].read();
+
                 if rs == rt {
-                    cpu.pc = cpu.pc.wrapping_add((r_instruction.imm as u32) << 2);
+                    cpu.run_branch_delayed();
+                    cpu.pc = cpu.pc.wrapping_add((instruction.imm as u32) << 2);
                 }
             }
 
             // BNE
             0b000101 => {
-                let rs = cpu.registers[r_instruction.rs as usize].read();
-                let rt = cpu.registers[r_instruction.rt as usize].read();
+                let rs = cpu.registers[instruction.rs as usize].read();
+                let rt = cpu.registers[instruction.rt as usize].read();
+
                 if rs != rt {
-                    cpu.pc = cpu.pc.wrapping_add((r_instruction.imm as u32) << 2);
+                    cpu.run_branch_delayed();
+                    cpu.pc = cpu.pc.wrapping_add((instruction.imm as u32) << 2);
                 }
             }
 
             // BGEZ
             0b000001 => {
-                let rs = cpu.registers[r_instruction.rs as usize].read();
-                let rt = cpu.registers[r_instruction.rt as usize].read();
+                let rs = cpu.registers[instruction.rs as usize].read();
+                let rt = cpu.registers[instruction.rt as usize].read();
                 if rs >= rt {
-                    cpu.pc = cpu.pc.wrapping_add((r_instruction.imm as u32) << 2);
+                    cpu.pc = cpu.pc.wrapping_add((instruction.imm as u32) << 2);
                 }
             }
 
             // BLEZ
             0b000110 => {
-                let rs = cpu.registers[r_instruction.rs as usize].read();
-                let rt = cpu.registers[r_instruction.rt as usize].read();
+                let rs = cpu.registers[instruction.rs as usize].read();
+                let rt = cpu.registers[instruction.rt as usize].read();
                 if rs <= rt {
-                    cpu.pc = cpu.pc.wrapping_add((r_instruction.imm as u32) << 2);
+                    cpu.pc = cpu.pc.wrapping_add((instruction.imm as u32) << 2);
                 }
             }
 
             // LB
             0b100000 => {
-                let rs = cpu.registers[r_instruction.rs as usize].read();
-                let imm = r_instruction.imm as u32;
+                let rs = cpu.registers[instruction.rs as usize].read();
+                let imm = instruction.imm as u32;
                 let address = rs.wrapping_add(imm);
                 let value = cpu.memory.read_byte(address);
-                cpu.registers[r_instruction.rt as usize].write(value as u32);
+                cpu.write_register(instruction.rt as usize,value as u32);
             }
 
             // LUI
             0b001111 => {
-                let imm = r_instruction.imm as u32;
-                cpu.registers[r_instruction.rt as usize].write(imm << 16);
+                let imm = instruction.imm as u32;
+                cpu.write_register(instruction.rt as usize,imm << 16);
             }
             _ => panic!("Unknown IType instruction, {}", self.funct),
         }
@@ -226,7 +232,7 @@ mod tests {
 
         let value: u32 = 0b0110;
         cpu.registers[instruction.rs as usize].write(value);
-        cpu.registers[instruction.rt as usize].write(value);
+        cpu.write_register(instruction.rt as usize,value);
         instruction.execute(&mut cpu);
         assert_eq!(cpu.pc, 16);
     }
@@ -240,7 +246,7 @@ mod tests {
 
         let value: u32 = 0b0110;
         cpu.registers[instruction.rs as usize].write(value);
-        cpu.registers[instruction.rt as usize].write(value + 1);
+        cpu.write_register(instruction.rt as usize,value + 1);
         instruction.execute(&mut cpu);
         assert_eq!(cpu.pc, 16);
     }
@@ -253,7 +259,7 @@ mod tests {
         let instruction = super::ITypeInstruction::build(0b000001, 2, 3, 2);
 
         cpu.registers[instruction.rs as usize].write(3 as u32);
-        cpu.registers[instruction.rt as usize].write(2 as u32);
+        cpu.write_register(instruction.rt as usize,2 as u32);
         instruction.execute(&mut cpu);
         assert_eq!(cpu.pc, 16);
     }
@@ -266,7 +272,7 @@ mod tests {
         let instruction = super::ITypeInstruction::build(0b000001, 2, 3, 2);
 
         cpu.registers[instruction.rs as usize].write(1 as u32);
-        cpu.registers[instruction.rt as usize].write(2 as u32);
+        cpu.write_register(instruction.rt as usize,2 as u32);
         instruction.execute(&mut cpu);
         assert_eq!(cpu.pc, 8);
     }
@@ -279,7 +285,7 @@ mod tests {
         let instruction = super::ITypeInstruction::build(0b000110, 2, 3, 2);
 
         cpu.registers[instruction.rs as usize].write(1 as u32);
-        cpu.registers[instruction.rt as usize].write(2 as u32);
+        cpu.write_register(instruction.rt as usize,2 as u32);
         instruction.execute(&mut cpu);
         assert_eq!(cpu.pc, 16);
     }
@@ -292,7 +298,7 @@ mod tests {
         let instruction = super::ITypeInstruction::build(0b000110, 2, 3, 2);
 
         cpu.registers[instruction.rs as usize].write(3 as u32);
-        cpu.registers[instruction.rt as usize].write(2 as u32);
+        cpu.write_register(instruction.rt as usize,2 as u32);
         instruction.execute(&mut cpu);
         assert_eq!(cpu.pc, 8);
     }

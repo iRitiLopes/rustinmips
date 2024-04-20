@@ -68,12 +68,16 @@ impl Executable<JTypeInstruction> for JFunction {
     fn execute(&self, instruction: JTypeInstruction, cpu: &mut crate::CPU) {
         match self.opcode {
             0b000010 => {
+                cpu.run_branch_delayed();
                 cpu.pc = instruction.address << 2;
             }
 
             0b000011 => {
                 let new_address = instruction.address << 2;
                 let ra = cpu.pc + 8;
+
+                cpu.run_branch_delayed();
+
                 cpu.registers[31].write(ra);
                 cpu.pc = new_address;
             }

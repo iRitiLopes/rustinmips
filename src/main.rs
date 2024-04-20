@@ -79,21 +79,41 @@ impl CPU {
         }
     }
 
+    fn read_register(&self, register: usize) -> u32 {
+        if register == 0 {
+            return 0;
+        }
+
+        self.registers[register].read()
+    }
+
+    fn write_register(&mut self, register: usize, value: u32) {
+        if register == 0 {
+            return;
+        }
+
+        self.registers[register ].write(value);
+    }
+
     fn run(&mut self) {
         self.pc = 0x00400000;
         loop {
             let instruction = self.memory.read(self.pc);
 
-            if instruction == 0 {
-                break;
-            }
-
             let instruction = instructions::get_instruction(instruction);
             instruction.execute(self);
-            //println!("Executing: {}", instruction.decode());
             self.pc += 4;
         }
     }
+
+    fn run_branch_delayed(&mut self) {
+        let branch_delayed_instruction = self.memory.read(self.pc + 4);
+
+        let branch_delayed_instruction = instructions::get_instruction(branch_delayed_instruction);
+
+        branch_delayed_instruction.execute(self);
+    }
+
 }
 
 impl std::fmt::Display for CPU {
@@ -131,7 +151,7 @@ fn read_program_elf(cpu: &mut CPU, file_path: &str) {
 fn main() {
     let mut cpu = CPU::new();
 
-    read_program_elf(&mut cpu, "./examples/02.hello");
+    read_program_elf(&mut cpu, "./examples/04.branches");
 
     cpu.run();
 }

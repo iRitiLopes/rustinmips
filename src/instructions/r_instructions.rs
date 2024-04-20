@@ -16,7 +16,7 @@ pub struct RTypeInstruction {
 
 impl Instruction for RTypeInstruction {
     fn decode(&self) -> String {
-        format!("{} {} {} {}", self.name, self.rd, self.rs, self.rt,)
+        format!("{} rd {} rs {} rt {}", self.name, self.rd, self.rs, self.rt,)
     }
 
     fn execute(&self, cpu: &mut CPU) {
@@ -70,6 +70,7 @@ impl RFunction {
                 0x27 => String::from("NOR"),
                 0x2A => String::from("SLT"),
                 0x00 => String::from("SLL"),
+                0x0d => String::from("NOOP"),
                 0x02 => String::from("SRL"),
                 0x03 => String::from("SRA"),
                 0x08 => String::from("JR"),
@@ -91,68 +92,76 @@ impl Executable<RTypeInstruction> for RFunction {
             0x20 => {
                 let rs = cpu.registers[r_instruction.rs as usize].read();
                 let rt = cpu.registers[r_instruction.rt as usize].read();
-                cpu.registers[r_instruction.rd as usize].write(rs.wrapping_add(rt));
+                cpu.write_register(r_instruction.rd as usize,rs.wrapping_add(rt));
             }
 
             // Add Unsigned
             0x21 => {
                 let rs = cpu.registers[r_instruction.rs as usize].read();
                 let rt = cpu.registers[r_instruction.rt as usize].read();
-                cpu.registers[r_instruction.rd as usize].write(rs.wrapping_add(rt));
+                cpu.write_register(r_instruction.rd as usize,rs.wrapping_add(rt));
             }
 
             // Subtract
             0x22 => {
                 let rs = cpu.registers[r_instruction.rs as usize].read();
                 let rt = cpu.registers[r_instruction.rt as usize].read();
-                cpu.registers[r_instruction.rd as usize].write(rs.wrapping_sub(rt));
+                cpu.write_register(r_instruction.rd as usize,rs.wrapping_sub(rt));
             }
 
             // And
             0x24 => {
                 let rs = cpu.registers[r_instruction.rs as usize].read();
                 let rt = cpu.registers[r_instruction.rt as usize].read();
-                cpu.registers[r_instruction.rd as usize].write(rs & rt);
+                cpu.write_register(r_instruction.rd as usize,rs & rt);
             }
 
             // Or
             0x25 => {
                 let rs = cpu.registers[r_instruction.rs as usize].read();
                 let rt = cpu.registers[r_instruction.rt as usize].read();
-                cpu.registers[r_instruction.rd as usize].write(rs | rt);
+                cpu.write_register(r_instruction.rd as usize,rs | rt);
             }
 
             // Xor
             0x26 => {
                 let rs = cpu.registers[r_instruction.rs as usize].read();
                 let rt = cpu.registers[r_instruction.rt as usize].read();
-                cpu.registers[r_instruction.rd as usize].write(rs ^ rt);
+                cpu.write_register(r_instruction.rd as usize,rs ^ rt);
             }
 
             // Nor
             0x27 => {
                 let rs = cpu.registers[r_instruction.rs as usize].read();
                 let rt = cpu.registers[r_instruction.rt as usize].read();
-                cpu.registers[r_instruction.rd as usize].write(!(rs | rt));
+                cpu.write_register(r_instruction.rd as usize,!(rs | rt));
             }
 
             // Set Less Than
             0x2A => {
                 let rs = cpu.registers[r_instruction.rs as usize].read();
                 let rt = cpu.registers[r_instruction.rt as usize].read();
-                cpu.registers[r_instruction.rd as usize].write(if rs < rt { 1 } else { 0 });
+                cpu.write_register(r_instruction.rd as usize,if rs < rt { 1 } else { 0 });
             }
 
             // Shift Left Logical
             0x00 => {
+                if r_instruction.rd == 0 && r_instruction.rt == 0 {
+                    return;
+                }
+
                 let rt = cpu.registers[r_instruction.rt as usize].read();
-                cpu.registers[r_instruction.rd as usize].write(rt << r_instruction.shamt);
+                cpu.write_register(r_instruction.rd as usize,rt << r_instruction.shamt);
+            }
+
+            0x0d => {
+                // No operation
             }
 
             // Shift Right Logical
             0x02 => {
                 let rt = cpu.registers[r_instruction.rt as usize].read();
-                cpu.registers[r_instruction.rd as usize].write(rt >> r_instruction.shamt);
+                cpu.write_register(r_instruction.rd as usize,rt >> r_instruction.shamt);
             }
 
             // Shift Right Arithmetic
@@ -175,11 +184,21 @@ impl Executable<RTypeInstruction> for RFunction {
 
                 if v0 == 1 {
                     println!("{}", a0 as u32);
+                    return;
                 }
 
                 if v0 == 4 {
                     let text = utils::get_text(cpu, a0);
-                    println!("{}", text);
+                    println!("{:}", text);
+                    return;
+                }
+
+                if v0 == 5 {
+                    let mut input = String::new();
+                    std::io::stdin().read_line(&mut input).unwrap();
+                    let input: u32 = input.trim().parse().unwrap();
+                    cpu.registers[2].write(input);
+                    return;
                 }
 
                 if v0 == 10 {
@@ -195,28 +214,50 @@ mod utils {
     use crate::CPU;
 
     pub fn get_text(cpu: &CPU, address: u32) -> String {
+        let mut relative = address % 4;
         let mut address = address;
         let mut text = String::new();
+        let mut must_loop = true;
         loop {
-            let value = cpu.memory.read(address);
-            let char1 = (value & 0xFF) as u8 as char;
-            let char2 = ((value >> 8) & 0xFF) as u8 as char;
-            let char3 = ((value >> 16) & 0xFF) as u8 as char;
-            let char4 = ((value >> 24) & 0xFF) as u8 as char;
+            if relative != 0 {
+                address -= relative;
+            }
 
-            let char_chain = format!("{}{}{}{}", char1, char2, char3, char4);
+            let value = cpu.memory.read(address);
+
+            let mut byte_chain = Vec::<u8>::new();
+
+            for i in (relative as usize)..4 {
+                let byte = ((value >> (i * 8)) & 0xFF) as u8;
+                if byte == 0 {
+                    must_loop = false;
+                    break
+                }
+                byte_chain.push(byte);
+            }
+
+            relative = 0;
+
+            let char_chain = latin1_to_string(&byte_chain);
+
             text.push_str(&char_chain);
 
-            if char1 == '\0' || char2 == '\0' || char3 == '\0' || char4 == '\0' {
+            if !must_loop {
                 break;
             }
 
             address += 4;
         }
 
-        text.replace('\0', "")
+        text
+    }
+
+    fn latin1_to_string(s: &[u8]) -> String {
+        s.iter().map(|&c| c as char).collect()
     }
 }
+
+
 
 #[cfg(test)]
 mod tests {
