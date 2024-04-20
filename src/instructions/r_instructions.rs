@@ -1,3 +1,6 @@
+use std::io;
+use std::io::Write;
+
 use crate::CPU;
 
 use crate::instructions::Executable;
@@ -167,14 +170,25 @@ impl Executable<RTypeInstruction> for RFunction {
             // Shift Right Arithmetic
             0x03 => {
                 let rt = cpu.registers[r_instruction.rt as usize].read();
-                cpu.registers[r_instruction.rd as usize]
-                    .write((rt as i32 >> r_instruction.shamt as i32) as u32);
+                cpu.write_register(r_instruction.rd as usize, (rt as i32 >> r_instruction.shamt as i32) as u32);
             }
 
             // Jump Register
             0x08 => {
                 let rs = cpu.registers[r_instruction.rs as usize].read();
+                cpu.run_branch_delayed();
                 cpu.pc = rs;
+                cpu.jump = true;
+            }
+
+            // Jump and Link Register
+            0x09 => {
+                let rs = cpu.registers[r_instruction.rs as usize].read();
+                let ra = cpu.pc + 8;
+                cpu.run_branch_delayed();
+                cpu.write_register(r_instruction.rd as usize, ra);
+                cpu.pc = rs;
+                cpu.jump = true;
             }
 
             // Syscall
@@ -183,14 +197,12 @@ impl Executable<RTypeInstruction> for RFunction {
                 let a0 = cpu.registers[4].read();
 
                 if v0 == 1 {
-                    println!("{}", a0 as u32);
-                    return;
+                    print!("{}", a0 as u32);
                 }
 
                 if v0 == 4 {
                     let text = utils::get_text(cpu, a0);
                     println!("{:}", text);
-                    return;
                 }
 
                 if v0 == 5 {
@@ -198,12 +210,18 @@ impl Executable<RTypeInstruction> for RFunction {
                     std::io::stdin().read_line(&mut input).unwrap();
                     let input: u32 = input.trim().parse().unwrap();
                     cpu.registers[2].write(input);
-                    return;
                 }
 
                 if v0 == 10 {
                     std::process::exit(0);
                 }
+
+                if v0 == 11 {
+                    let theChar = a0 as u8 as char;
+                    print!("{:}", theChar);
+                }
+
+                io::stdout().flush().unwrap();
             }
             _ => println!("unknown"),
         }

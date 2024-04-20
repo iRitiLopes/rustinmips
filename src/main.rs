@@ -68,6 +68,7 @@ pub struct CPU {
     registers: Vec<Register>,
     memory: Memory,
     pc: u32,
+    jump: bool
 }
 
 impl CPU {
@@ -76,6 +77,7 @@ impl CPU {
             registers: vec![Register::new(); 32],
             memory: Memory::new(1024),
             pc: 0,
+            jump: false
         }
     }
 
@@ -92,7 +94,7 @@ impl CPU {
             return;
         }
 
-        self.registers[register ].write(value);
+        self.registers[register].write(value);
     }
 
     fn run(&mut self) {
@@ -101,8 +103,15 @@ impl CPU {
             let instruction = self.memory.read(self.pc);
 
             let instruction = instructions::get_instruction(instruction);
+
+            // println!("\nInstruction: {} - Address: {:#06x},", instruction.decode(), self.pc);
             instruction.execute(self);
-            self.pc += 4;
+            
+            if !self.jump {
+                self.pc += 4;
+            } else {
+                self.jump = false;
+            }
         }
     }
 
@@ -111,6 +120,7 @@ impl CPU {
 
         let branch_delayed_instruction = instructions::get_instruction(branch_delayed_instruction);
 
+        // println!("\nBranch delayed instruction: {}", branch_delayed_instruction.decode());
         branch_delayed_instruction.execute(self);
     }
 
@@ -151,7 +161,7 @@ fn read_program_elf(cpu: &mut CPU, file_path: &str) {
 fn main() {
     let mut cpu = CPU::new();
 
-    read_program_elf(&mut cpu, "./examples/04.branches");
+    read_program_elf(&mut cpu, "./examples/06.collatz");
 
     cpu.run();
 }

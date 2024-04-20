@@ -55,7 +55,11 @@ impl JFunction {
     fn new(opcode: u8) -> JFunction {
         JFunction {
             opcode,
-            name: String::from("J-Type")
+            name: match opcode {
+                0b000010 => String::from("J"),
+                0b000011 => String::from("JAL"),
+                _ => String::from("Unknown J function")
+            }
         }
     }
 
@@ -69,7 +73,8 @@ impl Executable<JTypeInstruction> for JFunction {
         match self.opcode {
             0b000010 => {
                 cpu.run_branch_delayed();
-                cpu.pc = instruction.address << 2;
+                cpu.pc = (instruction.address << 2);
+                cpu.jump = true;
             }
 
             0b000011 => {
@@ -80,6 +85,7 @@ impl Executable<JTypeInstruction> for JFunction {
 
                 cpu.registers[31].write(ra);
                 cpu.pc = new_address;
+                cpu.jump = true
             }
             _ => panic!("Invalid J-Type instruction")
         }

@@ -143,6 +143,7 @@ impl Executable<ITypeInstruction> for IFunction {
                 let rs = cpu.registers[instruction.rs as usize].read();
                 let rt = cpu.registers[instruction.rt as usize].read();
                 if rs >= rt {
+                    cpu.run_branch_delayed();
                     cpu.pc = cpu.pc.wrapping_add((instruction.imm as u32) << 2);
                 }
             }
@@ -152,6 +153,7 @@ impl Executable<ITypeInstruction> for IFunction {
                 let rs = cpu.registers[instruction.rs as usize].read();
                 let rt = cpu.registers[instruction.rt as usize].read();
                 if rs <= rt {
+                    cpu.run_branch_delayed();
                     cpu.pc = cpu.pc.wrapping_add((instruction.imm as u32) << 2);
                 }
             }
@@ -313,5 +315,11 @@ mod tests {
         cpu.memory.write(2, value as u32);
         instruction.execute(&mut cpu);
         assert_eq!(cpu.registers[instruction.rt as usize].read(), value);
+    }
+
+    #[test]
+    fn test_shift() {
+        let imm = 10 as u32;
+        assert_eq!(imm << 2, imm * 4)
     }
 }
