@@ -127,8 +127,7 @@ impl Executable<ITypeInstruction> for IFunction {
 
                 if rs == rt {
                     cpu.run_branch_delayed();
-                    cpu.pc = 4 + cpu.pc.wrapping_add((instruction.imm as u32) << 2);
-                    cpu.jump = true;
+                    cpu.pc = cpu.pc.wrapping_add((instruction.imm as u32) << 2);
                 }
             }
 
@@ -140,8 +139,7 @@ impl Executable<ITypeInstruction> for IFunction {
                 if rs != rt {
                     cpu.run_branch_delayed();
 
-                    cpu.pc = 4 + cpu.pc.wrapping_add((instruction.imm as u32) << 2);
-                    cpu.jump = true;
+                    cpu.pc = cpu.pc.wrapping_add((instruction.imm as u32) << 2);
                 }
             }
 
@@ -151,8 +149,7 @@ impl Executable<ITypeInstruction> for IFunction {
                 let rt = cpu.registers[instruction.rt as usize].read();
                 if rs >= rt {
                     cpu.run_branch_delayed();
-                    cpu.pc = 4 + cpu.pc.wrapping_add((instruction.imm as u32) << 2);
-                    cpu.jump = true;
+                    cpu.pc = cpu.pc.wrapping_add((instruction.imm as u32) << 2);
                 }
             }
 
@@ -162,9 +159,8 @@ impl Executable<ITypeInstruction> for IFunction {
                 let rt = cpu.registers[instruction.rt as usize].read();
                 if rs <= rt {
                     cpu.run_branch_delayed();
-                    cpu.pc = 4 + cpu.pc.wrapping_add((instruction.imm as u32) << 2);
+                    cpu.pc = cpu.pc.wrapping_add((instruction.imm as u32) << 2);
                 }
-                cpu.jump = true;
             }
 
             // LB

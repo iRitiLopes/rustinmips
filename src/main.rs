@@ -186,7 +186,7 @@ fn read_program_elf(cpu: &mut CPU, file_path: &str) {
 fn main() {
     let mut cpu = CPU::new();
 
-    read_program_elf(&mut cpu, "./examples/06.collatz");
+    read_program_elf(&mut cpu, "./examples/08.sort");
 
     cpu.run();
 }
