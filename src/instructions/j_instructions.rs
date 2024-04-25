@@ -34,8 +34,8 @@ impl JTypeInstruction {
 }
 
 impl Instruction for JTypeInstruction {
-    fn decode(&self) -> String {
-        format!("{} {} {}", self.name, self.funct.decode(), self.address)
+    fn decode(&self, cpu: &mut crate::CPU) -> String {
+        format!("{} {} {}", self.name, self.funct.decode(), self.address << 2)
     }
 
     fn execute(&self, cpu: &mut crate::CPU) {
@@ -71,20 +71,22 @@ impl JFunction {
 impl Executable<JTypeInstruction> for JFunction {
     fn execute(&self, instruction: JTypeInstruction, cpu: &mut crate::CPU) {
         match self.opcode {
+
+            // J
             0b000010 => {
                 cpu.run_branch_delayed();
-                cpu.pc = (instruction.address << 2);
+                let next = (cpu.pc & 0xf000000) | (instruction.address << 2);
+                cpu.pc = next;
                 cpu.jump = true;
             }
 
+            // JAL
             0b000011 => {
-                let new_address = instruction.address << 2;
-                let ra = cpu.pc + 8;
-
                 cpu.run_branch_delayed();
-
+                let next = (cpu.pc & 0xf000000) | (instruction.address << 2);
+                let ra = cpu.pc + 8;
                 cpu.registers[31].write(ra);
-                cpu.pc = new_address;
+                cpu.pc = next;
                 cpu.jump = true
             }
             _ => panic!("Invalid J-Type instruction")

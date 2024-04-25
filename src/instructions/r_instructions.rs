@@ -18,8 +18,11 @@ pub struct RTypeInstruction {
 }
 
 impl Instruction for RTypeInstruction {
-    fn decode(&self) -> String {
-        format!("{} rd {} rs {} rt {}", self.name, self.rd, self.rs, self.rt,)
+    fn decode(&self, cpu: &mut CPU) -> String {
+        let rd_value = cpu.read_register(self.rd as usize);
+        let rs_value = cpu.read_register(self.rs as usize);
+        let rt_value = cpu.read_register(self.rt as usize);
+        format!("{} rd {}: {}, rs {}: {}, rt {}: {}", self.name, self.rd, rd_value, self.rs, rs_value, self.rt, rt_value)
     }
 
     fn execute(&self, cpu: &mut CPU) {
@@ -142,9 +145,12 @@ impl Executable<RTypeInstruction> for RFunction {
 
             // Set Less Than
             0x2A => {
-                let rs = cpu.registers[r_instruction.rs as usize].read();
-                let rt = cpu.registers[r_instruction.rt as usize].read();
-                cpu.write_register(r_instruction.rd as usize,if rs < rt { 1 } else { 0 });
+                let rs = cpu.registers[r_instruction.rs as usize].read() as i32;
+                let rt = cpu.registers[r_instruction.rt as usize].read() as i32;
+                let result = rs < rt;
+
+                //println!("SLT: {} < {}", rs, rt);
+                cpu.write_register(r_instruction.rd as usize,result as u32);
             }
 
             // Shift Left Logical
@@ -175,9 +181,8 @@ impl Executable<RTypeInstruction> for RFunction {
 
             // Jump Register
             0x08 => {
-                let rs = cpu.registers[r_instruction.rs as usize].read();
                 cpu.run_branch_delayed();
-                cpu.pc = rs;
+                cpu.pc = cpu.registers[r_instruction.rs as usize].read();
                 cpu.jump = true;
             }
 
@@ -202,7 +207,7 @@ impl Executable<RTypeInstruction> for RFunction {
 
                 if v0 == 4 {
                     let text = utils::get_text(cpu, a0);
-                    println!("{:}", text);
+                    print!("{:}", text);
                 }
 
                 if v0 == 5 {

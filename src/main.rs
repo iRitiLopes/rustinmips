@@ -25,12 +25,19 @@ impl Register {
 
 struct Memory {
     data: Vec<u32>,
+    stack_pointer: u32,
+    global_pointer: u32
 }
 
 impl Memory {
+    const STACK_POINTER: u32 = 0x7fffeffc;
+    const GLOBAL_POINTER: u32 = 0x10008000;
+    
     fn new(size: usize) -> Memory {
         Memory {
-            data: vec![0; 2u32.pow(30) as usize]
+            data: vec![0; 2u64.pow(32) as usize],
+            stack_pointer: Self::STACK_POINTER,
+            global_pointer: Self::GLOBAL_POINTER
         }
     }
 
@@ -73,12 +80,16 @@ pub struct CPU {
 
 impl CPU {
     fn new() -> CPU {
-        CPU {
+        let mut cpu = CPU {
             registers: vec![Register::new(); 32],
             memory: Memory::new(1024),
             pc: 0,
             jump: false
-        }
+        };
+
+        cpu.write_register(28, cpu.memory.global_pointer);
+        cpu.write_register(29, cpu.memory.stack_pointer);
+        cpu
     }
 
     fn read_register(&self, register: usize) -> u32 {
@@ -99,18 +110,32 @@ impl CPU {
 
     fn run(&mut self) {
         self.pc = 0x00400000;
+        let mut count = 0;
         loop {
             let instruction = self.memory.read(self.pc);
 
+            if instruction == 0 {
+                self.pc += 4;
+                continue;
+            }
+
             let instruction = instructions::get_instruction(instruction);
 
-            // println!("\nInstruction: {} - Address: {:#06x},", instruction.decode(), self.pc);
+
+            let decoded = instruction.decode(self);
+            //println!("{:#06x}, {}", self.pc, decoded);
             instruction.execute(self);
             
             if !self.jump {
                 self.pc += 4;
             } else {
                 self.jump = false;
+            }
+
+            count += 1;
+
+            if count > 8000 {
+                std::process::exit(0)
             }
         }
     }
@@ -120,7 +145,7 @@ impl CPU {
 
         let branch_delayed_instruction = instructions::get_instruction(branch_delayed_instruction);
 
-        // println!("\nBranch delayed instruction: {}", branch_delayed_instruction.decode());
+        //println!("\nBranch delayed instruction: {} - Address: {:#06x},", branch_delayed_instruction.decode(self), self.pc + 4);
         branch_delayed_instruction.execute(self);
     }
 

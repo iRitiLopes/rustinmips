@@ -5,7 +5,7 @@ pub mod j_instructions;
 pub mod r_instructions;
 
 pub trait Instruction {
-    fn decode(&self) -> String;
+    fn decode(&self, cpu: &mut CPU) -> String;
     fn execute(&self, cpu: &mut CPU);
 }
 trait Executable<T> {

@@ -40,8 +40,11 @@ impl ITypeInstruction {
 }
 
 impl Instruction for ITypeInstruction {
-    fn decode(&self) -> String {
-        format!("{} rs {}, rt {}, imm {}", self.name, self.rs, self.rt, self.imm)
+    fn decode(&self, cpu: &mut crate::CPU) -> String {
+        let rs_value = cpu.read_register(self.rs as usize);
+        let rt_value = cpu.read_register(self.rt as usize);
+
+        format!("{} rs {}: {}, rt {}: {}, imm {}", self.name, self.rs, rs_value, self.rt, rt_value, self.imm)
     }
 
     fn execute(&self, cpu: &mut crate::CPU) {
@@ -99,6 +102,7 @@ impl Executable<ITypeInstruction> for IFunction {
             0b001001 => {
                 let rs = cpu.registers[instruction.rs as usize].read();
                 let imm = instruction.imm as u32;
+
                 cpu.write_register(instruction.rt as usize,rs.wrapping_add(imm));
             }
 
@@ -123,7 +127,8 @@ impl Executable<ITypeInstruction> for IFunction {
 
                 if rs == rt {
                     cpu.run_branch_delayed();
-                    cpu.pc = cpu.pc.wrapping_add((instruction.imm as u32) << 2);
+                    cpu.pc = 4 + cpu.pc.wrapping_add((instruction.imm as u32) << 2);
+                    cpu.jump = true;
                 }
             }
 
@@ -134,7 +139,9 @@ impl Executable<ITypeInstruction> for IFunction {
 
                 if rs != rt {
                     cpu.run_branch_delayed();
-                    cpu.pc = cpu.pc.wrapping_add((instruction.imm as u32) << 2);
+
+                    cpu.pc = 4 + cpu.pc.wrapping_add((instruction.imm as u32) << 2);
+                    cpu.jump = true;
                 }
             }
 
@@ -144,7 +151,8 @@ impl Executable<ITypeInstruction> for IFunction {
                 let rt = cpu.registers[instruction.rt as usize].read();
                 if rs >= rt {
                     cpu.run_branch_delayed();
-                    cpu.pc = cpu.pc.wrapping_add((instruction.imm as u32) << 2);
+                    cpu.pc = 4 + cpu.pc.wrapping_add((instruction.imm as u32) << 2);
+                    cpu.jump = true;
                 }
             }
 
@@ -154,8 +162,9 @@ impl Executable<ITypeInstruction> for IFunction {
                 let rt = cpu.registers[instruction.rt as usize].read();
                 if rs <= rt {
                     cpu.run_branch_delayed();
-                    cpu.pc = cpu.pc.wrapping_add((instruction.imm as u32) << 2);
+                    cpu.pc = 4 + cpu.pc.wrapping_add((instruction.imm as u32) << 2);
                 }
+                cpu.jump = true;
             }
 
             // LB
@@ -172,7 +181,27 @@ impl Executable<ITypeInstruction> for IFunction {
                 let imm = instruction.imm as u32;
                 cpu.write_register(instruction.rt as usize,imm << 16);
             }
-            _ => panic!("Unknown IType instruction, {}", self.funct),
+
+            // LW
+            0b100011 => {
+                let rs_address = cpu.read_register(instruction.rs as usize);
+                let imm = instruction.imm as u32;
+                let word = cpu.memory.read_byte(rs_address + imm);
+
+                //println!("LW - Loading from address {} + {} the data: {} - into register: {}", rs_address, imm, word, instruction.rt);
+                cpu.write_register(instruction.rt as usize, word);
+            }
+
+            // SW
+            0b101011 => {
+                let rs_address = cpu.read_register(instruction.rs as usize);
+                let imm = instruction.imm as u32;
+
+                let word = cpu.read_register(instruction.rt as usize);
+
+                cpu.memory.write((rs_address + imm), word);
+            }
+            _ => panic!("Unknown IType instruction, {:#06x}", self.funct),
         }
     }
 }
