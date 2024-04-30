@@ -149,7 +149,6 @@ impl Executable<RTypeInstruction> for RFunction {
                 let rt = cpu.registers[r_instruction.rt as usize].read() as i32;
                 let result = rs < rt;
 
-                //println!("SLT: {} < {}", rs, rt);
                 cpu.write_register(r_instruction.rd as usize,result as u32);
             }
 
@@ -222,8 +221,8 @@ impl Executable<RTypeInstruction> for RFunction {
                 }
 
                 if v0 == 11 {
-                    let theChar = a0 as u8 as char;
-                    print!("{:}", theChar);
+                    let the_char = a0 as u8 as char;
+                    print!("{:}", the_char);
                 }
 
                 io::stdout().flush().unwrap();

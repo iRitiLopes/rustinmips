@@ -3,8 +3,6 @@ use crate::CPU;
 use crate::instructions::Executable;
 use crate::instructions::Instruction;
 
-use super::j_instructions::JTypeInstruction;
-
 #[derive(Clone)]
 pub struct ITypeInstruction {
     opcode: u8,
@@ -40,14 +38,14 @@ impl ITypeInstruction {
 }
 
 impl Instruction for ITypeInstruction {
-    fn decode(&self, cpu: &mut crate::CPU) -> String {
+    fn decode(&self, cpu: &mut CPU) -> String {
         let rs_value = cpu.read_register(self.rs as usize);
         let rt_value = cpu.read_register(self.rt as usize);
 
         format!("{} rs {}: {}, rt {}: {}, imm {}", self.name, self.rs, rs_value, self.rt, rt_value, self.imm)
     }
 
-    fn execute(&self, cpu: &mut crate::CPU) {
+    fn execute(&self, cpu: &mut CPU) {
         self.funct.execute(self.clone(), cpu);
     }
 }

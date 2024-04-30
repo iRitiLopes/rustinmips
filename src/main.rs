@@ -1,8 +1,8 @@
 mod instructions;
 use crate::instructions::Instruction;
 
-use std::io::Cursor;
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
+use std::io::Cursor;
 
 #[derive(Clone)]
 struct Register {
@@ -26,18 +26,18 @@ impl Register {
 struct Memory {
     data: Vec<u32>,
     stack_pointer: u32,
-    global_pointer: u32
+    global_pointer: u32,
 }
 
 impl Memory {
     const STACK_POINTER: u32 = 0x7fffeffc;
     const GLOBAL_POINTER: u32 = 0x10008000;
-    
+
     fn new(size: usize) -> Memory {
         Memory {
             data: vec![0; 2u64.pow(32) as usize],
             stack_pointer: Self::STACK_POINTER,
-            global_pointer: Self::GLOBAL_POINTER
+            global_pointer: Self::GLOBAL_POINTER,
         }
     }
 
@@ -68,14 +68,13 @@ impl Memory {
             initial_data_address += 4;
         }
     }
-
 }
 
 pub struct CPU {
     registers: Vec<Register>,
     memory: Memory,
     pc: u32,
-    jump: bool
+    jump: bool,
 }
 
 impl CPU {
@@ -84,7 +83,7 @@ impl CPU {
             registers: vec![Register::new(); 32],
             memory: Memory::new(1024),
             pc: 0,
-            jump: false
+            jump: false,
         };
 
         cpu.write_register(28, cpu.memory.global_pointer);
@@ -121,11 +120,8 @@ impl CPU {
 
             let instruction = instructions::get_instruction(instruction);
 
-
-            let decoded = instruction.decode(self);
-            //println!("{:#06x}, {}", self.pc, decoded);
             instruction.execute(self);
-            
+
             if !self.jump {
                 self.pc += 4;
             } else {
@@ -145,10 +141,8 @@ impl CPU {
 
         let branch_delayed_instruction = instructions::get_instruction(branch_delayed_instruction);
 
-        //println!("\nBranch delayed instruction: {} - Address: {:#06x},", branch_delayed_instruction.decode(self), self.pc + 4);
         branch_delayed_instruction.execute(self);
     }
-
 }
 
 impl std::fmt::Display for CPU {
@@ -161,21 +155,19 @@ impl std::fmt::Display for CPU {
     }
 }
 
-
-
 fn read_program_elf(cpu: &mut CPU, file_path: &str) {
     use std::fs::File;
     use std::io::Read;
 
     let mut data = File::open(format!("{}.data", file_path)).expect("File not found");
     let mut data_code = Vec::<u32>::new();
-    while let Ok(word) = data.read_u32::<LittleEndian>(){
+    while let Ok(word) = data.read_u32::<LittleEndian>() {
         data_code.push(word);
     }
 
     let mut text = File::open(format!("{}.text", file_path)).expect("File not found");
     let mut text_code = Vec::<u32>::new();
-    while let Ok(word) = text.read_u32::<LittleEndian>(){
+    while let Ok(word) = text.read_u32::<LittleEndian>() {
         text_code.push(word);
     }
 

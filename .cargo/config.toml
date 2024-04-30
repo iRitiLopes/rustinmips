@@ -1,0 +1,6 @@
+[env]
+RUSTFLAGS = "-Awarnings"
+RUST_TEST_THREADS = { value = "1", force = true }
+
+[alias]
+t = "test -- --test-threads=1 --show-output"
